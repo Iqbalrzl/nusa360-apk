@@ -13,7 +13,7 @@ const destinations = <Destination>[
   ),
   Destination(
     id: 'toba-lake',
-    name: 'Toba Lake',
+    name: 'Danau Toba',
     region: 'Sumatera Utara',
     x: 0.055,
     y: 0.436,

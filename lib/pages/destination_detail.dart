@@ -22,17 +22,40 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
   String? _aiAnswer;
   String? _lastQuestion;
 
-  // NEW: sheet disembunyikan dulu
+  // Sheet disembunyikan dahulu
   bool _showSheet = false;
+
+  // Simpan nilai minChildSize untuk referensi listener
+  static const double _minSheet = 0.20;
+
+  late final VoidCallback _sheetListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _sheetListener = () {
+      if (!_sheetController.isAttached) return;
+      final size = _sheetController.size;
+      // Saat user swipe turun hingga ke min, sembunyikan sheet
+      if (_showSheet && size <= _minSheet + 0.002) {
+        // Hindari setState saat build: gunakan microtask
+        scheduleMicrotask(() {
+          if (mounted) _hideSheet();
+        });
+      }
+    };
+    _sheetController.addListener(_sheetListener);
+  }
 
   @override
   void dispose() {
+    _sheetController.removeListener(_sheetListener);
+    _sheetController.dispose(); // opsional, tapi disarankan
     _askCtrl.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  // Persona berbeda untuk tiap destinasi
   ({String name, String avatarEmoji, Color color}) _persona() {
     switch (widget.destination.id) {
       case 'toba-lake':
@@ -85,11 +108,9 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
     return base;
   }
 
-  // NEW: helper untuk menampilkan sheet lalu animasi
   Future<void> _ensureSheetAndSnap(double size) async {
     if (!_showSheet) {
       setState(() => _showSheet = true);
-      // tunggu frame agar sheet ter-mount
       await Future<void>.delayed(const Duration(milliseconds: 16));
     }
     if (_sheetController.isAttached) {
@@ -103,24 +124,35 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
     }
   }
 
+  Future<void> _hideSheet() async {
+    if (_sheetController.isAttached) {
+      try {
+        await _sheetController.animateTo(
+          _minSheet,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+        );
+      } catch (_) {}
+    }
+    if (mounted) {
+      setState(() => _showSheet = false);
+    }
+  }
+
   Future<void> _askAi([String? predefined]) async {
     final q = predefined ?? _askCtrl.text.trim();
     if (q.isEmpty) return;
-
     setState(() {
       _asking = true;
       _aiAnswer = null;
       _lastQuestion = q;
     });
-
     try {
       final ctx = '${widget.destination.name}, ${widget.destination.region}';
       final res = await apiService.askAi(q, ctx);
       setState(() {
         _aiAnswer = res ?? 'Maaf, saya belum bisa menemukan jawaban.';
       });
-
-      // NEW: pastikan sheet muncul dan naik ke 62%
       await _ensureSheetAndSnap(0.62);
     } catch (e) {
       setState(() {
@@ -128,9 +160,7 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
       });
       await _ensureSheetAndSnap(0.62);
     } finally {
-      if (mounted) {
-        setState(() => _asking = false);
-      }
+      if (mounted) setState(() => _asking = false);
     }
   }
 
@@ -203,6 +233,7 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
+
                   // Judul tipografi besar
                   Text(
                     '${widget.destination.name},\n${widget.destination.region}.',
@@ -215,6 +246,7 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
+
                   // Ask AI pill
                   Material(
                     elevation: 10,
@@ -285,6 +317,7 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                     ),
                   ),
                   const Spacer(),
+
                   // Tombol AR dan Selengkapnya
                   Center(
                     child: Column(
@@ -318,7 +351,8 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        // NEW: Selengkapnya bisa menampilkan sheet
+
+                        // Selengkapnya bisa menampilkan sheet
                         GestureDetector(
                           onTap: () => _ensureSheetAndSnap(0.62),
                           child: Row(
@@ -348,12 +382,12 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
             ),
           ),
 
-          // NEW: Render sheet hanya saat diperlukan
+          // RENDER SHEET (tanpa NotificationListener)
           if (_showSheet)
             DraggableScrollableSheet(
               controller: _sheetController,
               initialChildSize: 0.28,
-              minChildSize: 0.20,
+              minChildSize: _minSheet,
               maxChildSize: 0.92,
               snap: true,
               snapSizes: const [0.28, 0.62, 0.92],
@@ -372,14 +406,22 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                     child: Column(
                       children: [
                         const SizedBox(height: 10),
-                        Container(
-                          width: 64,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.black.withOpacity(0.08),
+                        // Handle dengan swipe-down cepat untuk close
+                        GestureDetector(
+                          onVerticalDragEnd: (details) {
+                            if ((details.primaryVelocity ?? 0) > 250) {
+                              _hideSheet();
+                            }
+                          },
+                          child: Container(
+                            width: 64,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: Colors.black.withOpacity(0.08),
+                              ),
                             ),
                           ),
                         ),
@@ -400,7 +442,6 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                                 ),
                               ),
                               const SizedBox(height: 22),
-
                               if (_aiAnswer != null || _asking) ...[
                                 const _SectionHeader(title: 'Hasil'),
                                 const SizedBox(height: 8),
@@ -427,7 +468,6 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                                 ),
                                 const SizedBox(height: 18),
                               ],
-
                               const _SectionHeader(title: 'Tanyakan juga'),
                               const SizedBox(height: 10),
                               Wrap(
@@ -450,7 +490,6 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                                         .toList(),
                               ),
                               const SizedBox(height: 24),
-
                               Row(
                                 children: [
                                   _PersonaAvatar(persona: persona, small: true),
@@ -499,6 +538,7 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
   }
 }
 
+// --- Komponen pendukung tetap sama di bawah ini ---
 class _SectionHeader extends StatelessWidget {
   final String title;
   const _SectionHeader({required this.title});
@@ -523,7 +563,6 @@ class _PersonaAvatar extends StatelessWidget {
   final ({String name, String avatarEmoji, Color color}) persona;
   final bool small;
   const _PersonaAvatar({required this.persona, this.small = false});
-
   @override
   Widget build(BuildContext context) {
     final size = small ? 28.0 : 44.0;
@@ -558,7 +597,6 @@ class _PersonaAvatar extends StatelessWidget {
 
 class _TypingBubble extends StatefulWidget {
   const _TypingBubble();
-
   @override
   State<_TypingBubble> createState() => _TypingBubbleState();
 }

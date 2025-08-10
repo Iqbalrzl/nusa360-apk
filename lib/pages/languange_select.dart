@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nusa360/pages/login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/brand_header.dart';
-import '../widgets/decor_bottom_placeholder.dart';
 
 class LanguagePage extends StatefulWidget {
   const LanguagePage({super.key});
@@ -41,114 +39,162 @@ class _LanguagePageState extends State<LanguagePage> {
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFFC84E4E);
+    const red = Color(0xFFE31D1C); // warna tombol sesuai LoginPage
+    const creamBg = Color(0xFFF9F8F3); // latar krem sesuai LoginPage
 
     return Scaffold(
+      backgroundColor: creamBg,
       body: SafeArea(
         child: Stack(
           children: [
-            const Positioned.fill(
-              child: IgnorePointer(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: SizedBox(
-                    height: 180,
-                    child: DecorBottomPlaceholder(color: Color(0xB3C84E4E)),
-                  ),
-                ),
+            // Dekorasi gambar bawah seperti di LoginPage
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Image.asset(
+                'assets/motif.png',
+                fit: BoxFit.cover,
+                height: 180,
               ),
             ),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final maxW = constraints.maxWidth;
-                final contentW = maxW > 440 ? 420.0 : maxW * 0.9;
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints.tightFor(width: contentW),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 24),
-                          const BrandHeader(),
-                          const SizedBox(height: 64),
-                          const Text(
-                            'PILIH\nBAHASA',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              height: 1.15,
+
+            // Konten utama
+            Center(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxW = constraints.maxWidth;
+                  final contentW = maxW > 440 ? 420.0 : maxW * 0.9;
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 30),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints.tightFor(width: contentW),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Logo seperti di LoginPage
+                            const SizedBox(height: 24),
+                            Image.asset(
+                              'assets/logo.png',
+                              height: 100,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Text(
+                                  'Logo tidak ditemukan',
+                                  style: TextStyle(color: Colors.red),
+                                );
+                              },
                             ),
-                          ),
-                          const SizedBox(height: 28),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.06),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
+
+                            const SizedBox(height: 50),
+
+                            const Text(
+                              'PILIH\nBAHASA',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.black,
+                                fontFamily: 'Inter',
+                                height: 1.2,
+                              ),
                             ),
-                            child: DropdownButtonFormField<String>(
+
+                            const SizedBox(height: 30),
+
+                            // Dropdown bergaya seperti input di LoginPage (border hitam, pill)
+                            DropdownButtonFormField<String>(
                               value: selected,
                               isExpanded: true,
                               icon: const Icon(
                                 Icons.keyboard_arrow_down_rounded,
+                                color: Colors.black,
                               ),
-                              hint: const Text('Pilih bahasa'),
+                              hint: const Text(
+                                'Pilih Bahasa',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               decoration: InputDecoration(
                                 contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
+                                  horizontal: 20,
+                                  vertical: 12,
                                 ),
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
+                                  borderRadius: BorderRadius.circular(30),
+                                  borderSide: const BorderSide(
+                                    color: Colors.black,
+                                  ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
+                                  borderRadius: BorderRadius.circular(30),
+                                  borderSide: const BorderSide(
+                                    color: Colors.black,
+                                  ),
                                 ),
-                                filled: true,
-                                fillColor: Colors.white,
+                              ),
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600,
                               ),
                               items:
                                   languages
                                       .map(
                                         (e) => DropdownMenuItem<String>(
                                           value: e,
-                                          child: Text(e),
+                                          child: Text(
+                                            e,
+                                            style: const TextStyle(
+                                              fontFamily: 'Inter',
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                         ),
                                       )
                                       .toList(),
                               onChanged:
                                   (val) => setState(() => selected = val),
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: selected == null ? null : _continue,
-                              child: const Text(
-                                'Lanjutkan',
-                                style: TextStyle(fontWeight: FontWeight.w700),
+
+                            const SizedBox(height: 20),
+
+                            // Tombol 'Lanjutkan' seperti di LoginPage (merah, pill, full width)
+                            SizedBox(
+                              width: double.infinity,
+                              height: 45,
+                              child: ElevatedButton(
+                                onPressed: selected == null ? null : _continue,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: red,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  minimumSize: const Size(double.infinity, 45),
+                                ),
+                                child: const Text(
+                                  'Lanjutkan',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 40),
-                        ],
+
+                            const SizedBox(height: 40),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ],
         ),
