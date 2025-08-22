@@ -174,7 +174,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: ElevatedButton(
                               onPressed: _loading ? null : _submit,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFE31D1C),
+                                backgroundColor: const Color(0xFFC44B4B),
                                 minimumSize: const Size(
                                   double.infinity,
                                   45,

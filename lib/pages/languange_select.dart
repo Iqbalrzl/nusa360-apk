@@ -39,7 +39,6 @@ class _LanguagePageState extends State<LanguagePage> {
 
   @override
   Widget build(BuildContext context) {
-    const red = Color(0xFFE31D1C); // warna tombol sesuai LoginPage
     const creamBg = Color(0xFFF9F8F3); // latar krem sesuai LoginPage
 
     return Scaffold(
@@ -169,7 +168,7 @@ class _LanguagePageState extends State<LanguagePage> {
                               child: ElevatedButton(
                                 onPressed: selected == null ? null : _continue,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: red,
+                                  backgroundColor: const Color(0xFFC44B4B),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
                                   ),

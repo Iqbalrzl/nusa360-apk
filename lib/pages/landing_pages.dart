@@ -4,7 +4,6 @@ import 'package:nusa360/pages/destination_detail.dart';
 import 'package:nusa360/pages/profile.dart';
 import '../data/destinations.dart';
 import '../models/destination.dart';
-import '../widgets/brand_header.dart';
 import '../widgets/floating_nav_bar.dart';
 import '../widgets/floating_search_bar.dart';
 import '../widgets/indonesia_map_view.dart';
@@ -21,7 +20,7 @@ class _LandingPageState extends State<LandingPage> {
   final FocusNode _focusNode = FocusNode();
 
   List<Destination> _filtered = destinations;
-  bool _debugCoords = false; // toggle untuk bantu ambil koordinat
+  bool _debugCoords = false;
 
   @override
   void initState() {
@@ -142,7 +141,12 @@ class _LandingPageState extends State<LandingPage> {
                         ),
                       );
                     },
-                    child: const BrandHeader(titleSize: 24, subSize: 18),
+                    child: Image.asset(
+                      'assets/logo.png',
+                      width: 70,
+                      height: 70,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(

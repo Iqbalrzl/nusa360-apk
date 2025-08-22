@@ -3,7 +3,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:nusa360/pages/landing_pages.dart';
 import 'package:nusa360/pages/login.dart';
 import 'package:nusa360/services/nusa360_api.dart';
-import '../widgets/brand_header.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -17,6 +16,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _loading = true;
   bool _uploading = false;
   bool _saving = false;
+  bool _hasChanges = false;
   final apiService = ApiService();
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
@@ -25,6 +25,8 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _nameCtrl.addListener(_checkChanges);
+    _emailCtrl.addListener(_checkChanges);
     _load();
   }
 
@@ -47,6 +49,22 @@ class _ProfilePageState extends State<ProfilePage> {
     // Set nilai form
     _nameCtrl.text = (_user?['username'] ?? _user?['name'] ?? '').toString();
     _emailCtrl.text = (_user?['email'] ?? '').toString();
+
+    _checkChanges();
+  }
+
+  void _checkChanges() {
+    final originalName =
+        (_user?['username'] ?? _user?['name'] ?? '').toString();
+    final originalEmail = (_user?['email'] ?? '').toString();
+
+    final changed =
+        _nameCtrl.text.trim() != originalName ||
+        _emailCtrl.text.trim() != originalEmail;
+
+    setState(() {
+      _hasChanges = changed;
+    });
   }
 
   Future<void> _refresh() async {
@@ -161,7 +179,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFFC84E4E);
+    const primary = Color(0xFFC44B4B);
     return Scaffold(
       body: SafeArea(
         child:
@@ -185,7 +203,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             tooltip: 'Kembali',
                           ),
                           const SizedBox(width: 4),
-                          const BrandHeader(titleSize: 24, subSize: 18),
+                          Image.asset('assets/logo.png', width: 70, height: 70),
                           const Spacer(),
                           IconButton(
                             onPressed: _refresh,
@@ -353,7 +371,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                 width: double.infinity,
                                 height: 46,
                                 child: ElevatedButton.icon(
-                                  onPressed: _saving ? null : _saveProfile,
+                                  onPressed:
+                                      (!_hasChanges || _saving)
+                                          ? null
+                                          : _saveProfile,
                                   icon:
                                       _saving
                                           ? const SizedBox(
@@ -366,6 +387,19 @@ class _ProfilePageState extends State<ProfilePage> {
                                           )
                                           : const Icon(Icons.save_rounded),
                                   label: const Text('Simpan perubahan'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        Colors.blue, // warna background
+                                    foregroundColor:
+                                        Colors.white, // warna teks & icon
+                                    elevation: 0, // hilangin shadow
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      side:
+                                          BorderSide
+                                              .none, // <- ini yang hilangin border hitam
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],

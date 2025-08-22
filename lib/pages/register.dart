@@ -216,7 +216,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             child: ElevatedButton(
                               onPressed: _loading ? null : _submit,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFE31D1C),
+                                backgroundColor: const Color(0xFFC44B4B),
                                 minimumSize: const Size(double.infinity, 45),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30),
