@@ -9,14 +9,34 @@ class LanguagePage extends StatefulWidget {
   State<LanguagePage> createState() => _LanguagePageState();
 }
 
-class _LanguagePageState extends State<LanguagePage> {
+class _LanguagePageState extends State<LanguagePage>
+    with SingleTickerProviderStateMixin {
   final List<String> languages = const ['Bahasa Indonesia', 'English'];
   String? selected;
+
+  bool isOpen = false;
+  late AnimationController _controller;
+  late Animation<double> _expandAnimation;
 
   @override
   void initState() {
     super.initState();
     _loadSavedLanguage();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _expandAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSavedLanguage() async {
@@ -37,16 +57,27 @@ class _LanguagePageState extends State<LanguagePage> {
     ).push(MaterialPageRoute(builder: (_) => const LoginPage()));
   }
 
+  void _toggleDropdown() {
+    setState(() {
+      isOpen = !isOpen;
+      if (isOpen) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    const creamBg = Color(0xFFF9F8F3); // latar krem sesuai LoginPage
+    const creamBg = Color(0xFFF9F8F3);
 
     return Scaffold(
       backgroundColor: creamBg,
       body: SafeArea(
         child: Stack(
           children: [
-            // Dekorasi gambar bawah seperti di LoginPage
+            // Dekorasi bawah
             Positioned(
               bottom: 0,
               left: 0,
@@ -72,7 +103,6 @@ class _LanguagePageState extends State<LanguagePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // Logo seperti di LoginPage
                             const SizedBox(height: 24),
                             Image.asset(
                               'assets/logo.png',
@@ -84,7 +114,6 @@ class _LanguagePageState extends State<LanguagePage> {
                                 );
                               },
                             ),
-
                             const SizedBox(height: 50),
 
                             const Text(
@@ -98,70 +127,170 @@ class _LanguagePageState extends State<LanguagePage> {
                                 height: 1.2,
                               ),
                             ),
-
                             const SizedBox(height: 30),
 
-                            // Dropdown bergaya seperti input di LoginPage (border hitam, pill)
-                            DropdownButtonFormField<String>(
-                              value: selected,
-                              isExpanded: true,
-                              icon: const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                color: Colors.black,
-                              ),
-                              hint: const Text(
-                                'Pilih Bahasa',
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                  borderSide: const BorderSide(
-                                    color: Colors.black,
+                            // Custom Dropdown seperti capture
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Label
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 4, bottom: 8),
+                                  child: Text(
+                                    'Select job role',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black54,
+                                      fontFamily: 'Inter',
+                                    ),
                                   ),
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                  borderSide: const BorderSide(
-                                    color: Colors.black,
+
+                                // Dropdown Container
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                      width: 1,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ),
-                              style: const TextStyle(
-                                color: Colors.black87,
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.w600,
-                              ),
-                              items:
-                                  languages
-                                      .map(
-                                        (e) => DropdownMenuItem<String>(
-                                          value: e,
-                                          child: Text(
-                                            e,
-                                            style: const TextStyle(
-                                              fontFamily: 'Inter',
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                  child: Column(
+                                    children: [
+                                      // Main dropdown button
+                                      GestureDetector(
+                                        onTap: _toggleDropdown,
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 14,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  selected ?? "Pilih Bahasa",
+                                                  style: TextStyle(
+                                                    fontFamily: 'Inter',
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 15,
+                                                    color:
+                                                        selected == null
+                                                            ? Colors.black54
+                                                            : Colors.black87,
+                                                  ),
+                                                ),
+                                              ),
+                                              Icon(
+                                                isOpen
+                                                    ? Icons.keyboard_arrow_up
+                                                    : Icons.keyboard_arrow_down,
+                                                color: Colors.black54,
+                                                size: 20,
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      )
-                                      .toList(),
-                              onChanged:
-                                  (val) => setState(() => selected = val),
+                                      ),
+
+                                      // Dropdown items
+                                      SizeTransition(
+                                        sizeFactor: _expandAnimation,
+                                        axisAlignment: -1,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              top: BorderSide(
+                                                color: Colors.grey.shade200,
+                                                width: 1,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children:
+                                                languages
+                                                    .map(
+                                                      (e) => GestureDetector(
+                                                        onTap: () {
+                                                          setState(() {
+                                                            selected = e;
+                                                            isOpen = false;
+                                                            _controller
+                                                                .reverse();
+                                                          });
+                                                        },
+                                                        child: Container(
+                                                          width:
+                                                              double.infinity,
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 16,
+                                                                vertical: 12,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.white,
+                                                            border:
+                                                                e !=
+                                                                        languages
+                                                                            .last
+                                                                    ? Border(
+                                                                      bottom: BorderSide(
+                                                                        color:
+                                                                            Colors.grey.shade100,
+                                                                        width:
+                                                                            0.5,
+                                                                      ),
+                                                                    )
+                                                                    : null,
+                                                          ),
+                                                          child: Align(
+                                                            alignment:
+                                                                Alignment
+                                                                    .centerLeft,
+                                                            child: Text(
+                                                              e,
+                                                              style: const TextStyle(
+                                                                fontFamily:
+                                                                    'Inter',
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                fontSize: 15,
+                                                                color:
+                                                                    Colors
+                                                                        .black87,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    )
+                                                    .toList(),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
 
                             const SizedBox(height: 20),
 
-                            // Tombol 'Lanjutkan' seperti di LoginPage (merah, pill, full width)
+                            // Tombol lanjutkan
                             SizedBox(
                               width: double.infinity,
                               height: 45,
@@ -185,7 +314,6 @@ class _LanguagePageState extends State<LanguagePage> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 40),
                           ],
                         ),
