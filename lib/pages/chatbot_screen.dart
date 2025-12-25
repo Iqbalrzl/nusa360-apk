@@ -1131,7 +1131,7 @@ class _Composer extends StatelessWidget {
 // Typing indicator
 // =====================================
 class _TypingIndicator extends StatefulWidget {
-  const _TypingIndicator({super.key});
+  const _TypingIndicator();
   @override
   State<_TypingIndicator> createState() => _TypingIndicatorState();
 }

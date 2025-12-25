@@ -22,17 +22,40 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
   String? _aiAnswer;
   String? _lastQuestion;
 
-  // NEW: sheet disembunyikan dulu
+  // Sheet disembunyikan dahulu
   bool _showSheet = false;
+
+  // Simpan nilai minChildSize untuk referensi listener
+  static const double _minSheet = 0.20;
+
+  late final VoidCallback _sheetListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _sheetListener = () {
+      if (!_sheetController.isAttached) return;
+      final size = _sheetController.size;
+      // Saat user swipe turun hingga ke min, sembunyikan sheet
+      if (_showSheet && size <= _minSheet + 0.002) {
+        // Hindari setState saat build: gunakan microtask
+        scheduleMicrotask(() {
+          if (mounted) _hideSheet();
+        });
+      }
+    };
+    _sheetController.addListener(_sheetListener);
+  }
 
   @override
   void dispose() {
+    _sheetController.removeListener(_sheetListener);
+    _sheetController.dispose(); // opsional, tapi disarankan
     _askCtrl.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  // Persona berbeda untuk tiap destinasi
   ({String name, String avatarEmoji, Color color}) _persona() {
     switch (widget.destination.id) {
       case 'toba-lake':
@@ -85,11 +108,9 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
     return base;
   }
 
-  // NEW: helper untuk menampilkan sheet lalu animasi
   Future<void> _ensureSheetAndSnap(double size) async {
     if (!_showSheet) {
       setState(() => _showSheet = true);
-      // tunggu frame agar sheet ter-mount
       await Future<void>.delayed(const Duration(milliseconds: 16));
     }
     if (_sheetController.isAttached) {
@@ -103,24 +124,35 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
     }
   }
 
+  Future<void> _hideSheet() async {
+    if (_sheetController.isAttached) {
+      try {
+        await _sheetController.animateTo(
+          _minSheet,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+        );
+      } catch (_) {}
+    }
+    if (mounted) {
+      setState(() => _showSheet = false);
+    }
+  }
+
   Future<void> _askAi([String? predefined]) async {
     final q = predefined ?? _askCtrl.text.trim();
     if (q.isEmpty) return;
-
     setState(() {
       _asking = true;
       _aiAnswer = null;
       _lastQuestion = q;
     });
-
     try {
       final ctx = '${widget.destination.name}, ${widget.destination.region}';
       final res = await apiService.askAi(q, ctx);
       setState(() {
         _aiAnswer = res ?? 'Maaf, saya belum bisa menemukan jawaban.';
       });
-
-      // NEW: pastikan sheet muncul dan naik ke 62%
       await _ensureSheetAndSnap(0.62);
     } catch (e) {
       setState(() {
@@ -128,15 +160,12 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
       });
       await _ensureSheetAndSnap(0.62);
     } finally {
-      if (mounted) {
-        setState(() => _asking = false);
-      }
+      if (mounted) setState(() => _asking = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final persona = _persona();
     final primary = const Color(0xFFC84E4E);
 
     return Scaffold(
@@ -177,22 +206,18 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
           // Konten atas: back, judul besar, ask bubble, tombol AR
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 16,
+              ), // batas biar ga mepet
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Back button
+                  // Back button merah bulat
                   Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.25),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFC84E4E),
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
                     ),
                     child: IconButton(
                       onPressed: () => Navigator.of(context).pop(),
@@ -202,90 +227,67 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Judul tipografi besar
+                  const SizedBox(height: 32),
+
+                  // Judul besar (destinasi)
                   Text(
-                    '${widget.destination.name},\n${widget.destination.region}.',
+                    '${widget.destination.name},\n${widget.destination.region}',
                     style: const TextStyle(
-                      fontSize: 46,
-                      height: 1.05,
+                      fontSize: 34,
+                      height: 1.25,
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
-                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  // Ask AI pill
-                  Material(
-                    elevation: 10,
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(28),
+                  const SizedBox(height: 28),
+
+                  // Input Tanya AI
+                  Center(
                     child: Container(
+                      height: 46,
+                      width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.92),
-                        borderRadius: BorderRadius.circular(28),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 24,
-                            offset: const Offset(0, 12),
-                          ),
-                        ],
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.search_rounded,
-                            color: Colors.black87,
-                          ),
+                          const Icon(Icons.search, color: Colors.grey),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
                               controller: _askCtrl,
                               focusNode: _focusNode,
-                              textInputAction: TextInputAction.send,
+                              textInputAction: TextInputAction.search,
                               onSubmitted: (_) => _askAi(),
                               decoration: const InputDecoration(
-                                hintText: 'Tanya AI..',
+                                hintText: 'Tanya AI...',
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
                                 border: InputBorder.none,
+                                isCollapsed: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: _asking ? null : () => _askAi(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primary,
-                              foregroundColor: Colors.white,
-                              shape: const StadiumBorder(),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              elevation: 0,
+                          IconButton(
+                            onPressed: () => _askAi(),
+                            icon: const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 18,
+                              color: Colors.grey,
                             ),
-                            child:
-                                _asking
-                                    ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                    : const Text('Kirim'),
                           ),
                         ],
                       ),
                     ),
                   ),
                   const Spacer(),
-                  // Tombol AR dan Selengkapnya
+
+                  // Tombol AR + Selengkapnya
                   Center(
                     child: Column(
                       children: [
@@ -298,45 +300,29 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: primary,
+                            backgroundColor: const Color(0xFFC84E4E),
                             foregroundColor: Colors.white,
                             shape: const StadiumBorder(),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 36,
-                              vertical: 16,
+                              vertical: 14,
                             ),
-                            side: const BorderSide(
-                              color: Colors.black,
-                              width: 1,
-                            ),
-                            elevation: 10,
-                            shadowColor: Colors.black.withOpacity(0.3),
                           ),
                           child: const Text(
                             'Mode AR',
                             style: TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        // NEW: Selengkapnya bisa menampilkan sheet
+                        const SizedBox(height: 14),
                         GestureDetector(
                           onTap: () => _ensureSheetAndSnap(0.62),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(
-                                Icons.keyboard_arrow_up_rounded,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'Selengkapnya',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
+                          child: const Text(
+                            'Selengkapnya',
+                            style: TextStyle(
+                              color: Colors.white,
+                              decoration: TextDecoration.underline,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -348,12 +334,12 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
             ),
           ),
 
-          // NEW: Render sheet hanya saat diperlukan
+          // RENDER SHEET (tanpa NotificationListener)
           if (_showSheet)
             DraggableScrollableSheet(
               controller: _sheetController,
               initialChildSize: 0.28,
-              minChildSize: 0.20,
+              minChildSize: _minSheet,
               maxChildSize: 0.92,
               snap: true,
               snapSizes: const [0.28, 0.62, 0.92],
@@ -372,14 +358,34 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                     child: Column(
                       children: [
                         const SizedBox(height: 10),
-                        Container(
-                          width: 64,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.black.withOpacity(0.08),
+
+                        GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onVerticalDragUpdate: (details) {
+                            if (_sheetController.isAttached) {
+                              final newSize =
+                                  _sheetController.size -
+                                  details.primaryDelta! /
+                                      MediaQuery.of(context).size.height;
+                              _sheetController.jumpTo(
+                                newSize.clamp(_minSheet, 0.92),
+                              );
+                            }
+                          },
+                          onVerticalDragEnd: (details) {
+                            if ((details.primaryVelocity ?? 0) > 250) {
+                              _hideSheet();
+                            }
+                          },
+                          child: Container(
+                            width: 64,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: Colors.black.withOpacity(0.08),
+                              ),
                             ),
                           ),
                         ),
@@ -400,7 +406,6 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                                 ),
                               ),
                               const SizedBox(height: 22),
-
                               if (_aiAnswer != null || _asking) ...[
                                 const _SectionHeader(title: 'Hasil'),
                                 const SizedBox(height: 8),
@@ -427,7 +432,6 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                                 ),
                                 const SizedBox(height: 18),
                               ],
-
                               const _SectionHeader(title: 'Tanyakan juga'),
                               const SizedBox(height: 10),
                               Wrap(
@@ -450,7 +454,6 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
                                         .toList(),
                               ),
                               const SizedBox(height: 24),
-
                               Row(
                                 children: [
                                   _PersonaAvatar(persona: persona, small: true),
@@ -499,6 +502,7 @@ class _DestinationDetailPageState extends State<DestinationDetailPage> {
   }
 }
 
+// --- Komponen pendukung tetap sama di bawah ini ---
 class _SectionHeader extends StatelessWidget {
   final String title;
   const _SectionHeader({required this.title});
@@ -523,7 +527,6 @@ class _PersonaAvatar extends StatelessWidget {
   final ({String name, String avatarEmoji, Color color}) persona;
   final bool small;
   const _PersonaAvatar({required this.persona, this.small = false});
-
   @override
   Widget build(BuildContext context) {
     final size = small ? 28.0 : 44.0;
@@ -558,7 +561,6 @@ class _PersonaAvatar extends StatelessWidget {
 
 class _TypingBubble extends StatefulWidget {
   const _TypingBubble();
-
   @override
   State<_TypingBubble> createState() => _TypingBubbleState();
 }

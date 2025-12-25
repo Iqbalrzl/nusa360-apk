@@ -3,11 +3,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:nusa360/pages/landing_pages.dart';
 import 'package:nusa360/pages/login.dart';
 import 'package:nusa360/services/nusa360_api.dart';
-import '../widgets/brand_header.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
-
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
@@ -18,7 +16,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _loading = true;
   bool _uploading = false;
   bool _saving = false;
-
+  bool _hasChanges = false;
   final apiService = ApiService();
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
@@ -27,6 +25,8 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _nameCtrl.addListener(_checkChanges);
+    _emailCtrl.addListener(_checkChanges);
     _load();
   }
 
@@ -41,16 +41,30 @@ class _ProfilePageState extends State<ProfilePage> {
     // Ambil dari cache lebih dulu
     final cached = await apiService.getCachedUser();
     final avatar = await apiService.getAvatarUrl();
-
     setState(() {
       _user = cached;
       _avatarUrl = avatar;
       _loading = false;
     });
-
     // Set nilai form
     _nameCtrl.text = (_user?['username'] ?? _user?['name'] ?? '').toString();
     _emailCtrl.text = (_user?['email'] ?? '').toString();
+
+    _checkChanges();
+  }
+
+  void _checkChanges() {
+    final originalName =
+        (_user?['username'] ?? _user?['name'] ?? '').toString();
+    final originalEmail = (_user?['email'] ?? '').toString();
+
+    final changed =
+        _nameCtrl.text.trim() != originalName ||
+        _emailCtrl.text.trim() != originalEmail;
+
+    setState(() {
+      _hasChanges = changed;
+    });
   }
 
   Future<void> _refresh() async {
@@ -73,14 +87,12 @@ class _ProfilePageState extends State<ProfilePage> {
       imageQuality: 85,
     );
     if (picked == null) return;
-
     setState(() => _uploading = true);
     final url = await apiService.uploadAvatar(picked);
     setState(() {
       _avatarUrl = url ?? _avatarUrl;
       _uploading = false;
     });
-
     if (url == null) {
       ScaffoldMessenger.of(
         context,
@@ -100,7 +112,6 @@ class _ProfilePageState extends State<ProfilePage> {
       email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
     );
     setState(() => _saving = false);
-
     if (!mounted) return;
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -123,6 +134,39 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // BARU: dialog konfirmasi sebelum logout
+  Future<void> _confirmLogout() async {
+    const primary = Color(0xFFC84E4E);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Konfirmasi'),
+          content: const Text('Anda yakin ingin keluar dari akun?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Keluar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed == true) {
+      await _logout();
+    }
+  }
+
   void _goBack() {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -135,8 +179,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFFC84E4E);
-
+    const primary = Color(0xFFC44B4B);
     return Scaffold(
       body: SafeArea(
         child:
@@ -160,7 +203,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             tooltip: 'Kembali',
                           ),
                           const SizedBox(width: 4),
-                          const BrandHeader(titleSize: 24, subSize: 18),
+                          Image.asset('assets/logo.png', width: 70, height: 70),
                           const Spacer(),
                           IconButton(
                             onPressed: _refresh,
@@ -267,7 +310,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 16),
 
                       // Form edit nama & email
@@ -315,8 +357,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (v) {
-                                  if (v == null || v.trim().isEmpty)
+                                  if (v == null || v.trim().isEmpty) {
                                     return 'Email tidak boleh kosong';
+                                  }
                                   final ok = RegExp(
                                     r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                                   ).hasMatch(v.trim());
@@ -328,7 +371,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                 width: double.infinity,
                                 height: 46,
                                 child: ElevatedButton.icon(
-                                  onPressed: _saving ? null : _saveProfile,
+                                  onPressed:
+                                      (!_hasChanges || _saving)
+                                          ? null
+                                          : _saveProfile,
                                   icon:
                                       _saving
                                           ? const SizedBox(
@@ -341,20 +387,34 @@ class _ProfilePageState extends State<ProfilePage> {
                                           )
                                           : const Icon(Icons.save_rounded),
                                   label: const Text('Simpan perubahan'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        Colors.blue, // warna background
+                                    foregroundColor:
+                                        Colors.white, // warna teks & icon
+                                    elevation: 0, // hilangin shadow
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      side:
+                                          BorderSide
+                                              .none, // <- ini yang hilangin border hitam
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 24),
 
                       // Actions
                       SizedBox(
                         height: 48,
                         child: ElevatedButton.icon(
-                          onPressed: _logout,
+                          // sebelumnya: onPressed: _logout,
+                          onPressed:
+                              _confirmLogout, // panggil dialog konfirmasi
                           icon: const Icon(Icons.logout_rounded),
                           label: const Text('Keluar'),
                           style: ElevatedButton.styleFrom(
